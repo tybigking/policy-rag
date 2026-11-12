@@ -1,0 +1,42 @@
+﻿# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node.js
+node_modules/
+.next/
+dist/
+build/
+coverage/
+
+# Local databases and uploaded files
+backend/var/pgdata/
+backend/var/storage/
+data/uploads/
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+
+# Operating system files
+.DS_Store
+Thumbs.db
