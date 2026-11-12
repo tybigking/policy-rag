@@ -11,6 +11,6 @@
 - P0、P1 和非目标：已冻结
 - README 和路线图：已完成
 - 初始提交：`46c0c96 chore: initialize PolicyRAG project`
-- 阶段验证提交：完成本文档提交后补充
+- 阶段验证提交：`ff73dfa docs: complete stage 0 definition`
 - 口试结果：待按说明书中的三个问题完成口头检查
 - 遗留风险：尚未开始工程实现；阶段 1 前不得扩展 Agent、Text-to-SQL 或连接器
