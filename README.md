@@ -53,13 +53,70 @@
 
 ## 当前状态
 
-阶段 0：产品定义与范围冻结。
+阶段 1：工程基础与身份系统。
 
-## 开发与验证
+## 后端启动（阶段 1）
 
-工程环境将在阶段 1 建立。当前可执行的基础检查：
+前提：已安装 Python 3.12，并已启动 Docker Desktop。
 
-```bash
-git status
-git log --oneline --decorate -5
+```powershell
+# 1. 创建虚拟环境并安装依赖
+cd backend
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+
+# 2. 准备本地环境变量（.env 不提交 Git）
+Copy-Item .env.example .env
+
+# 3. 从仓库根目录启动 PostgreSQL + pgvector
+cd ..
+docker compose up -d
+
+# 4. 回到 backend 执行迁移和种子数据
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m scripts.seed
+
+# 5. 启动 API
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --loop app.loop:selector_event_loop
+```
+
+启动后：
+
+- Swagger 文档：http://127.0.0.1:8000/docs
+- `POST /auth/register` 注册
+- `POST /auth/login` 登录并返回 JWT
+- `GET /auth/me` 用 Bearer JWT 获取当前用户
+- `GET /health` 健康检查
+
+种子账号（仅本地开发）：
+
+- 管理员：`admin@example.com` / `ChangeMe123!`
+- 普通员工：`staff@example.com` / `ChangeMe123!`
+
+## 测试
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m pytest
+```
+
+覆盖：成功登录、错误密码 401、缺少令牌 401、参数错误 422。
+
+## 阶段 1 验收（删卷 -> 迁移 -> 种子 -> 登录）
+
+```powershell
+# 从仓库根目录删除数据库卷并重启数据库
+docker compose down -v
+docker compose up -d
+
+cd backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m scripts.seed
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --loop app.loop:selector_event_loop
+
+# 另开终端登录验证
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/auth/login `
+  -ContentType "application/json" `
+  -Body '{"email":"admin@example.com","password":"ChangeMe123!"}'
 ```
