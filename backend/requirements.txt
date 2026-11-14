@@ -53,10 +53,14 @@ pydantic-settings==2.16.2
     # via policy-rag
 pyjwt==2.15.1
     # via policy-rag
+pypdf==7.1.0
+    # via policy-rag
 python-dotenv==1.2.4
     # via
     #   pydantic-settings
     #   uvicorn
+python-multipart==0.0.33
+    # via policy-rag
 pyyaml==6.0.3
     # via uvicorn
 sqlalchemy==2.1.8

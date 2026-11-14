@@ -29,6 +29,7 @@
 - 多种大模型供应商
 - 复杂度量角色、计费与 Webhook
 - 大规模并发和分布式索引
+- 扫描版 PDF 的 OCR
 
 ## 主流程
 
@@ -53,11 +54,11 @@
 
 ## 当前状态
 
-阶段 1：工程基础与身份系统。
+阶段 2：文档上传解析与可定位分块，已完成并通过验收。
 
-## 后端启动（阶段 1）
+## 后端启动
 
-前提：已安装 Python 3.12，并已启动 Docker Desktop。
+前提：已安装 Python 3.12，并已启动 PostgreSQL（或用仓库根目录 Docker Compose 启动）。
 
 ```powershell
 # 1. 创建虚拟环境并安装依赖
@@ -87,6 +88,12 @@ cd backend
 - `POST /auth/register` 注册
 - `POST /auth/login` 登录并返回 JWT
 - `GET /auth/me` 用 Bearer JWT 获取当前用户
+- `POST /knowledge-bases` 管理员创建知识库
+- `GET /knowledge-bases` 列出当前组织知识库
+- `POST /knowledge-bases/{kb_id}/documents` 上传文档（multipart）
+- `GET /knowledge-bases/{kb_id}/documents` 列出知识库文档
+- `GET /documents/{document_id}` 查看文档状态
+- `GET /documents/{document_id}/chunks` 查看全部分块及 locator
 - `GET /health` 健康检查
 
 种子账号（仅本地开发）：
@@ -94,14 +101,39 @@ cd backend
 - 管理员：`admin@example.com` / `ChangeMe123!`
 - 普通员工：`staff@example.com` / `ChangeMe123!`
 
+上传示例：
+
+```powershell
+# 先登录拿 token
+$token = (Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/auth/login `
+  -ContentType "application/json" `
+  -Body '{"email":"admin@example.com","password":"ChangeMe123!"}').access_token
+
+# 创建知识库
+$kb = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/knowledge-bases `
+  -Headers @{Authorization="Bearer $token"} `
+  -ContentType "application/json" `
+  -Body '{"name":"员工手册","visibility":"org"}'
+
+# 上传 Markdown/PDF；文件字段名必须是 file
+curl.exe -X POST "http://127.0.0.1:8000/knowledge-bases/$($kb.id)/documents" `
+  -H "Authorization: Bearer $token" `
+  -F "file=@D:\repos\docs\manual.md;type=text/markdown"
+```
+
 ## 测试
 
 ```powershell
 cd backend
+
+# 单元测试：解析器、分块、存储安全、auth（不要求数据库）
 .\.venv\Scripts\python.exe -m pytest
+
+# 集成测试：真实 PostgreSQL + 临时存储目录的上传链路
+.\.venv\Scripts\python.exe -m pytest -m integration
 ```
 
-覆盖：成功登录、错误密码 401、缺少令牌 401、参数错误 422。
+覆盖：成功登录、错误密码 401、缺少令牌 401、参数错误 422、Markdown 章节分块、PDF 逐页解析、空白页跳过、损坏 PDF 失败、路径穿越防护、上传接口 ready/failed、重复上传 409。
 
 ## 阶段 1 验收（删卷 -> 迁移 -> 种子 -> 登录）
 
@@ -119,4 +151,17 @@ cd backend
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/auth/login `
   -ContentType "application/json" `
   -Body '{"email":"admin@example.com","password":"ChangeMe123!"}'
+```
+
+## 阶段 2 验收（上传 -> ready/failed -> 反查 chunks -> 重复上传 409）
+
+说明与限制见 `docs/INGESTION.md`。
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pytest -m integration
+
+# 调试命令：查看某文档全部分块
+.\.venv\Scripts\python.exe -m scripts.show_chunks <document_id>
 ```

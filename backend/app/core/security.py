@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from argon2 import PasswordHasher
@@ -33,7 +33,7 @@ def verify_password(raw_password: str, hashed_password: str) -> bool:
 def create_access_token(subject: str) -> str:
     """签发带过期时间的 JWT，subject 放用户 UUID。"""
     settings = get_settings()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expires = now + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {"sub": subject, "iat": now, "exp": expires}
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)

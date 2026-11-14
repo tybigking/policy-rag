@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
@@ -37,7 +37,7 @@ class FakeDBSession:
         if obj.id is None:
             obj.id = uuid.uuid4()
         if obj.created_at is None:
-            obj.created_at = datetime.now(timezone.utc)
+            obj.created_at = datetime.now(UTC)
 
 
 def _call(result, request_fn):
@@ -60,7 +60,7 @@ def _existing_user(password="secret123"):
         id=uuid.uuid4(),
         email="admin@example.com",
         password_hash=hash_password(password),
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 

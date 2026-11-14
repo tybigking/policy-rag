@@ -3,7 +3,7 @@ import sys
 
 from fastapi import FastAPI
 
-from app.api import auth
+from app.api import auth, documents, kb
 
 if sys.platform == "win32":
     # Windows 默认 Proactor 事件循环不支持 psycopg 异步驱动的 add_reader，切换为 Selector
@@ -12,10 +12,12 @@ if sys.platform == "win32":
 app = FastAPI(
     title="PolicyRAG API",
     description="PolicyRAG 制度文档问答系统后端",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.include_router(auth.router)
+app.include_router(kb.router)
+app.include_router(documents.router)
 
 
 @app.get("/health")
