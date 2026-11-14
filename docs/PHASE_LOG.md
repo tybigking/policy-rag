@@ -17,7 +17,7 @@
 
 ## 阶段 1 工程基础与身份系统
 
-- 完成日期：2026-11-14（代码与测试就绪；Docker 实机复验待本机安装 Docker 后执行）
+- 完成日期：2026-11-14
 - 当前分支：`main`
 - 主要产物：
   - `backend/app`：可启动的 FastAPI 应用（注册 / 登录 / me / health）
@@ -28,4 +28,4 @@
   - `docker-compose.yml`：PostgreSQL + pgvector
 - 验证命令：`cd backend && .venv\Scripts\python.exe -m pytest`（4 passed）
 - 口试结果：待按说明书阶段 1 三个问题完成口头检查
-- 遗留风险：本机未安装 Docker，`删卷 -> 迁移 -> 种子 -> 登录` 的完整复验尚未在本地执行；待 Docker 就绪后补验。
+- 遗留风险：本机未安装 Docker，Docker Compose 尚未实测；已用本机 PostgreSQL `mydb` 完成等价复验：`DROP SCHEMA public CASCADE -> alembic upgrade head -> scripts.seed -> 登录 admin@example.com` 全部通过。
