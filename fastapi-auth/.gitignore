@@ -1,0 +1,14 @@
+# 环境与密钥
+.env
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 本地数据库
+auth.db
+
+# IDE
+.idea/
