@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 import jieba
 
-_TOKEN = re.compile(r"[\u4e00-\u9fff]|[a-zA-Z0-9]+")
+_TOKEN = re.compile(r"[\u4e00-\u9fff]+|[a-zA-Z0-9]+")
 
 
 def tokenize(text: str) -> list[str]:

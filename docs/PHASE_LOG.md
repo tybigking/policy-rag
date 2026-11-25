@@ -137,3 +137,14 @@
 - 遗留风险：
   - 环境无 npm，未采用 Next.js；用无构建 SPA 补齐全部页面与状态，功能验收不依赖框架
   - 端到端 UI 演示与 390px 截图需在具备 PostgreSQL 的机器上连同后端一起验证
+
+## 阶段 3-7 补充复验（2026-11-25，数据库就绪后）
+
+- 环境：`pgvector/pgvector:pg16` 容器已运行，端口 5432 可用。
+- 旧数据卷未执行 initdb 脚本，手动补建扩展：`docker exec ... psql -U postgres -d mydb -c "CREATE EXTENSION IF NOT EXISTS vector;"` 成功。
+- `alembic upgrade head`：新增 `chunk_embeddings`、`conversations`、`messages`、`citations` 迁移全部成功。
+- `scripts.seed`：三套知识库 + 管理员/员工账号成功。
+- 单元测试：`pytest` → 23 passed, 7 deselected。
+- 集成测试：`pytest -m integration` → 7 passed（上传、权限越权、问答引用、拒答、无权知识库不泄漏）。
+- 端到端 smoke：上传 `normal.md` → ready（2 chunks）→ `scripts.reindex` 首跑写 4、次跑写 0（幂等）→ `POST /chat/ask` 返回 answered + 2 条引用。
+- 修复：`keyword_search.tokenize` 的 CJK 正则由单字符改为「连续中文串」，避免“今天天气”被切成单字而与“天”误匹配，解决无关问题误答。
