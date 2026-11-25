@@ -7,10 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_membership, require_admin
+from app.api.deps import get_access_scope, require_admin
 from app.config import get_settings
 from app.db import get_db
 from app.db.models import Document, DocumentChunk, KnowledgeBase, Membership
+from app.services.access import AccessScope
 from app.services.ingestion import process_document
 from app.services.storage import (
     UploadValidationError,
@@ -52,6 +53,14 @@ class ChunkOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+def _require_kb_read(scope: AccessScope, kb_id: uuid.UUID) -> None:
+    if not scope.can_read(kb_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="知识库不存在或无权访问",
+        )
+
+
 async def _get_kb_for_org(
     db: AsyncSession, kb_id: uuid.UUID, org_id: uuid.UUID
 ) -> KnowledgeBase:
@@ -71,14 +80,14 @@ async def _get_kb_for_org(
     return kb
 
 
-async def _get_document_for_org(
-    db: AsyncSession, document_id: uuid.UUID, org_id: uuid.UUID
+async def _get_document_for_scope(
+    db: AsyncSession, document_id: uuid.UUID, scope: AccessScope
 ) -> Document:
     document = (
         await db.execute(
             select(Document).where(
                 Document.id == document_id,
-                Document.org_id == org_id,
+                Document.org_id == scope.org_id,
             )
         )
     ).scalars().first()
@@ -87,6 +96,7 @@ async def _get_document_for_org(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="文档不存在",
         )
+    _require_kb_read(scope, document.kb_id)
     return document
 
 
@@ -96,13 +106,13 @@ async def _get_document_for_org(
 )
 async def list_documents(
     kb_id: uuid.UUID,
-    membership: Membership = Depends(get_current_membership),
+    scope: AccessScope = Depends(get_access_scope),
     db: AsyncSession = Depends(get_db),
 ) -> list[Document]:
-    await _get_kb_for_org(db, kb_id, membership.org_id)
+    _require_kb_read(scope, kb_id)
     result = await db.execute(
         select(Document)
-        .where(Document.kb_id == kb_id, Document.org_id == membership.org_id)
+        .where(Document.kb_id == kb_id, Document.org_id == scope.org_id)
         .order_by(Document.created_at.desc())
     )
     return list(result.scalars().all())
@@ -129,7 +139,6 @@ async def upload_document(
             detail="文件为空，不能上传",
         )
 
-    # 先算哈希去重，避免重复文件落盘
     digest = content_hash(data)
     duplicate = (
         await db.execute(
@@ -186,7 +195,6 @@ async def upload_document(
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
     )
-    # process_document 内部 rollback 会过期对象属性，返回前重新加载，避免响应序列化时惰性查询
     await db.refresh(document)
     return document
 
@@ -194,23 +202,22 @@ async def upload_document(
 @router.get("/documents/{document_id}", response_model=DocumentOut)
 async def get_document(
     document_id: uuid.UUID,
-    membership: Membership = Depends(get_current_membership),
+    scope: AccessScope = Depends(get_access_scope),
     db: AsyncSession = Depends(get_db),
 ) -> Document:
-    return await _get_document_for_org(db, document_id, membership.org_id)
+    return await _get_document_for_scope(db, document_id, scope)
 
 
 @router.get("/documents/{document_id}/chunks", response_model=list[ChunkOut])
 async def list_document_chunks(
     document_id: uuid.UUID,
-    membership: Membership = Depends(get_current_membership),
+    scope: AccessScope = Depends(get_access_scope),
     db: AsyncSession = Depends(get_db),
 ) -> list[DocumentChunk]:
-    await _get_document_for_org(db, document_id, membership.org_id)
+    await _get_document_for_scope(db, document_id, scope)
     result = await db.execute(
         select(DocumentChunk)
         .where(DocumentChunk.document_id == document_id)
         .order_by(DocumentChunk.chunk_index)
     )
     return list(result.scalars().all())
-

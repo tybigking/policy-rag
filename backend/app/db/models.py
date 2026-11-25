@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
@@ -101,7 +102,7 @@ class KnowledgeBase(Base):
 
 
 class KnowledgeBasePermission(Base):
-    """阶段 5 权限隔离时启用；现在先建好结构。"""
+    """知识库显式授权：只支持 read 级别。"""
 
     __tablename__ = "kb_permissions"
 
@@ -201,4 +202,119 @@ class DocumentChunk(Base):
         CheckConstraint("char_length(content) > 0", name="ck_chunks_content_not_empty"),
         Index("ix_chunks_org_id", "org_id"),
         Index("ix_chunks_kb_id", "kb_id"),
+    )
+
+
+class ChunkEmbedding(Base):
+    """分块向量。同一分块同一模型只保留一条；dim 与模型名一起留档。"""
+
+    __tablename__ = "chunk_embeddings"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    chunk_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("chunks.id", ondelete="CASCADE"), nullable=False
+    )
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    dim: Mapped[int] = mapped_column(Integer, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(384), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("chunk_id", "model", name="uq_chunk_embeddings_chunk_model"),
+        CheckConstraint("dim > 0", name="ck_chunk_embeddings_dim"),
+        Index("ix_chunk_embeddings_chunk_id", "chunk_id"),
+    )
+
+
+class Conversation(Base):
+    """一次问答会话。第一版每次提问可新建会话，也支持追加到已有会话。"""
+
+    __tablename__ = "conversations"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_conversations_org_user", "org_id", "user_id"),
+    )
+
+
+class Message(Base):
+    """会话内的问题与答案。retrieval_snapshot 保存检索快照便于排查。"""
+
+    __tablename__ = "messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="submitted", server_default=text("'submitted'")
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retrieval_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    token_usage: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("role IN ('user', 'assistant')", name="ck_messages_role"),
+        CheckConstraint(
+            "status IN ('submitted', 'answered', 'refused', 'failed')",
+            name="ck_messages_status",
+        ),
+        CheckConstraint(
+            "mode IS NULL OR mode IN ('llm', 'extractive')", name="ck_messages_mode"
+        ),
+        Index("ix_messages_conversation_id", "conversation_id"),
+    )
+
+
+class Citation(Base):
+    """答案引用：保存回答时的 chunk 快照，查看时仍要重新鉴权。"""
+
+    __tablename__ = "citations"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()")
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False
+    )
+    chunk_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("chunks.id", ondelete="CASCADE"), nullable=False
+    )
+    label: Mapped[str] = mapped_column(String(10), nullable=False)
+    locator_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    content_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("message_id", "label", name="uq_citations_message_label"),
+        Index("ix_citations_message_id", "message_id"),
+        Index("ix_citations_chunk_id", "chunk_id"),
     )

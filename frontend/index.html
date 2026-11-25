@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PolicyRAG · 制度问答</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">PolicyRAG</div>
+    <nav class="topnav" id="topnav" hidden>
+      <button data-view="kb-list">知识库</button>
+      <button data-view="chat">提问</button>
+    </nav>
+    <div class="userbox" id="userbox" hidden>
+      <span id="username"></span>
+      <button id="logout" class="ghost">退出</button>
+    </div>
+  </header>
+
+  <main id="app" aria-live="polite"></main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

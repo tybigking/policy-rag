@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_membership
 from app.core.security import (
     create_access_token,
     get_current_user,
@@ -13,7 +14,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db import get_db
-from app.db.models import User
+from app.db.models import Membership, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -36,6 +37,7 @@ class UserOut(BaseModel):
     id: uuid.UUID
     email: str
     created_at: datetime
+    role: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,5 +96,9 @@ async def login(
 
 
 @router.get("/me", response_model=UserOut)
-async def me(current_user: User = Depends(get_current_user)) -> UserOut:
+async def me(
+    current_user: User = Depends(get_current_user),
+    membership: Membership = Depends(get_current_membership),
+) -> User:
+    current_user.role = membership.role
     return current_user

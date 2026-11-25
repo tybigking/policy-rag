@@ -1,0 +1,22 @@
+[
+  {"id": 1, "category": "keyword", "question": "员工每年有几天年假？"},
+  {"id": 2, "category": "keyword", "question": "加班的审批流程是什么？"},
+  {"id": 3, "category": "keyword", "question": "门禁卡丢失了怎么办？"},
+  {"id": 4, "category": "keyword", "question": "差旅报销需要提交哪些票据？"},
+  {"id": 5, "category": "keyword", "question": "入职需要准备哪些材料？"},
+  {"id": 6, "category": "keyword", "question": "试用期最长多久？"},
+  {"id": 7, "category": "keyword", "question": "考勤打卡的时间范围是什么？"},
+  {"id": 8, "category": "keyword", "question": "离职交接包含哪些步骤？"},
+  {"id": 9, "category": "keyword", "question": "保密协议适用于哪些岗位？"},
+  {"id": 10, "category": "keyword", "question": "电脑设备损坏如何报修？"},
+  {"id": 11, "category": "semantic", "question": "休息日可以连休几天？"},
+  {"id": 12, "category": "semantic", "question": "迟到了会不会扣钱？"},
+  {"id": 13, "category": "semantic", "question": "到外地出差的住宿标准是怎么定的？"},
+  {"id": 14, "category": "semantic", "question": "第一次来公司要带什么证件？"},
+  {"id": 15, "category": "semantic", "question": "要离开公司的时候需要办哪些手续？"},
+  {"id": 16, "category": "irrelevant", "question": "今天北京天气怎么样？"},
+  {"id": 17, "category": "irrelevant", "question": "帮我写一封求职信。"},
+  {"id": 18, "category": "irrelevant", "question": "附近有什么好吃的餐厅？"},
+  {"id": 19, "category": "irrelevant", "question": "Python 里如何排序一个列表？"},
+  {"id": 20, "category": "irrelevant", "question": "2026 年世界杯冠军是谁？"}
+]
